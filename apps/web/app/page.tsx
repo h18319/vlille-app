@@ -1,17 +1,17 @@
 "use client";
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import type { Station } from "@/components/StationsMap";
 
-type Station = {
-  id: string;
-  name?: string;
-  lat?: number;
-  lon?: number;
-  bikes?: number;
-  docks?: number;
-  address?: string;
-};
+const StationsMap = dynamic(() => import("@/components/StationsMap"), {
+  ssr: false,
+  loading: () => <div className="card p-3">Chargement de la carte…</div>,
+});
 
-async function fetchStations(signal: AbortSignal, min?: number): Promise<Station[]> {
+async function fetchStations(
+  signal: AbortSignal,
+  min?: number
+): Promise<Station[]> {
   const qs = min ? `?min=${min}` : "";
   // On appelle le proxy Next (même origine, pas de CORS)
   const res = await fetch(`/api/stations${qs}`, { cache: "no-store", signal });
@@ -21,27 +21,40 @@ async function fetchStations(signal: AbortSignal, min?: number): Promise<Station
 
 export default function Page() {
   const [stations, setStations] = useState<Station[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [min, setMin] = useState<number>(0);
 
-  // 1) Chargement initial + reload quand "min" change
+  // Chargement initial + reload quand "min" change
   useEffect(() => {
     const ac = new AbortController();
-    setLoading(true);
-    setError(null);
+    let cancelled = false;
 
-    fetchStations(ac.signal, min)
-      .then(setStations)
-      .catch((e) => {
-        if ((e as any)?.name !== "AbortError") setError((e as Error).message);
-      })
-      .finally(() => setLoading(false));
+    (async () => {
+      try {
+        const data = await fetchStations(ac.signal, min);
+        if (cancelled) return;
+        setStations(data);
+        setError(null); // on clear l’erreur après succès
+      } catch (err) {
+        // Abort ? on ignore
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (cancelled) return;
+        // Autres erreurs
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (cancelled) return;
+        setLoading(false); // on coupe le loading ici
+      }
+    })();
 
-    return () => ac.abort(); // nettoie si on change de page ou de filtre
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
   }, [min]);
 
-  // 2) (optionnel) rafraîchissement auto toutes les 60s
+  // rafraîchissement auto toutes les 60s
   useEffect(() => {
     const id = setInterval(() => {
       const ac = new AbortController();
@@ -57,7 +70,10 @@ export default function Page() {
     <main className="page-shell space-y-6">
       <header className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">Stations V’Lille</h1>
-        <p className="text-slate-400">Données via proxy Next : <code>/api/stations</code></p>
+        <p className="text-slate-400">
+          Données via proxy Next <code>/api/stations</code> — carte
+          OpenStreetMap
+        </p>
 
         <div className="flex items-center gap-3">
           <label className="text-sm text-slate-400">Min vélos dispo</label>
@@ -72,27 +88,18 @@ export default function Page() {
         </div>
       </header>
 
-      {loading && (
-        <div className="text-slate-400">Chargement…</div>
-      )}
-
       {error && (
         <div className="card p-3 text-red-300 border-red-400/40">
           Erreur: {error}
         </div>
       )}
 
-      {!loading && !error && (
-        <div className="grid gap-4 md:grid-cols-3">
-          {stations.map((s) => (
-            <article key={s.id} className="card p-4">
-              <h2 className="font-semibold">{s.name ?? "Station"}</h2>
-              <p className="text-xs text-slate-400">{s.address ?? "—"}</p>
-              <p className="mt-2">🚲 {s.bikes ?? 0} — 🅿️ {s.docks ?? 0}</p>
-            </article>
-          ))}
-        </div>
-      )}
+      <StationsMap stations={stations} height={520} />
+
+      {/* (optionnel) ta grille de cartes texte */}
+      {/* <div className="grid gap-4 md:grid-cols-3">
+        {stations.map(...)}
+      </div> */}
     </main>
   );
 }

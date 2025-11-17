@@ -16,13 +16,18 @@
 :root {
   color: var(--color-text);
   background: var(--color-bg);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
   scroll-behavior: smooth;
 }
 
 body {
   min-height: 100vh;
-  background: radial-gradient(circle at top, rgba(148, 163, 184, 0.12), transparent 55%),
+  background: radial-gradient(
+      circle at top,
+      rgba(148, 163, 184, 0.12),
+      transparent 55%
+    ),
     var(--color-bg);
 }
 
@@ -77,4 +82,52 @@ a:hover {
   outline: 2px solid rgba(94, 234, 212, 0.8);
   /* teal-300-ish */
   outline-offset: 3px;
+}
+
+/* Marqueur “dot” pour les stations */
+.vlille-marker span {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--dot);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.25);
+}
+
+/* Bouton “Me centrer” dans la barre Leaflet */
+.vlille-locate-btn {
+  line-height: 1;
+  font-size: 18px;
+  background: #0f172acc; /* slate-900/80 */
+  color: #e2e8f0; /* slate-200 */
+  border: 1px solid #334155; /* slate-700 */
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.vlille-locate-btn:hover {
+  background: #1f2937cc; /* slate-800/80 */
+}
+
+/* Cluster coloré : cercle + valeur au centre */
+.vlille-cluster {
+  width: 42px;
+  height: 42px;
+  border-radius: 9999px;
+  background: var(--c);
+  display: grid;
+  place-items: center;
+  color: white;
+  font-weight: 700;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.25);
+}
+.vlille-cluster span {
+  transform: translateY(-1px);
+}
+
+.leaflet-marker-icon.vlille-cluster-wrapper {
+  background: transparent;
+  border: none;
 }
