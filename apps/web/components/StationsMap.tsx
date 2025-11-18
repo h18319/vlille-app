@@ -3,7 +3,7 @@
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import type { LatLngBoundsExpression } from "leaflet";
 import L from "leaflet";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 
 export type Station = {
   id: string;
@@ -58,7 +58,7 @@ class LocateControlClass extends L.Control {
             fillOpacity: 0.15,
           }).addTo(m);
         },
-        () => {},
+        () => { },
         { enableHighAccuracy: true, timeout: 6000 }
       );
     });
@@ -120,7 +120,7 @@ function ClusteredMarkers({ stations }: { stations: Station[] }) {
   // Charger les scripts côté client uniquement
   useEffect(() => {
     (async () => {
-      await import("leaflet-defaulticon-compatibility").catch(() => {});
+      await import("leaflet-defaulticon-compatibility").catch(() => { });
       await import("leaflet.markercluster"); // ajoute L.markerClusterGroup
       if (!clusterRef.current) {
         // Création du groupe de clusters avec un iconCreateFunction custom
@@ -170,8 +170,7 @@ function ClusteredMarkers({ stations }: { stations: Station[] }) {
           `<div style="min-width:200px">
             <strong>${s.name ?? "Station"}</strong>
             <div style="font-size:12px;opacity:.8">${s.address ?? "—"}</div>
-            <div style="margin-top:6px">🚲 ${s.bikes ?? 0} • 🅿️ ${
-            s.docks ?? 0
+            <div style="margin-top:6px">🚲 ${s.bikes ?? 0} • 🅿️ ${s.docks ?? 0
           }</div>
           </div>`
         );
@@ -195,25 +194,30 @@ export default function StationsMap({
 }) {
   const center: [number, number] = [50.6292, 3.0573]; // Lille
 
+  const [mapReady, setMapReady] = useState(false);
+
+
   return (
-    <div
-      className={`card relative overflow-hidden ${className}`}
-      style={{ height }}
-    >
+    <div className={`card relative overflow-hidden ${className}`} style={{ height }}>
       <MapContainer
         center={center}
         zoom={13}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom
+        whenReady={() => setMapReady(true)}   // whenReady, pas whenCreated
+        key="leaflet-map"                  //  force remount propre en dev
       >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap contributors"
-        />
-
-        <FitToStations stations={stations} />
-        <LocateControl />
-        <ClusteredMarkers stations={stations} />
+        {mapReady && (
+          <>
+            <TileLayer
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution="&copy; OpenStreetMap contributors"
+            />
+            <FitToStations stations={stations} />
+            <LocateControl />
+            <ClusteredMarkers stations={stations} />
+          </>
+        )}
       </MapContainer>
     </div>
   );
