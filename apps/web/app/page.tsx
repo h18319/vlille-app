@@ -97,11 +97,11 @@ export default function Page() {
           <span>Données temps réel</span>
         </div>
 
-        <div className="flex items-center gap-3 justify-between">
+        <div className="flex flex-wrap items-center gap-3 justify-between">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
             V’Lille — Disponibilités en temps réel
           </h1>
-          <ThemeToggle />
+          <ThemeToggle className="shrink-0" />
         </div>
 
         <p className="max-w-2xl text-slate-400">
