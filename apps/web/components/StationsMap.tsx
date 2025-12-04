@@ -1,9 +1,8 @@
 "use client";
 
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
-import type { LatLngBoundsExpression } from "leaflet";
 import L from "leaflet";
-import { useEffect, useState, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 export type Station = {
   id: string;
@@ -58,7 +57,7 @@ class LocateControlClass extends L.Control {
             fillOpacity: 0.15,
           }).addTo(m);
         },
-        () => { },
+        () => {},
         { enableHighAccuracy: true, timeout: 6000 }
       );
     });
@@ -74,23 +73,20 @@ class LocateControlClass extends L.Control {
 function FitToStations({ stations }: { stations: Station[] }) {
   const map = useMap();
 
-  const bounds = useMemo<LatLngBoundsExpression | null>(() => {
+  useEffect(() => {
     const pts = stations
       .filter((s) => typeof s.lat === "number" && typeof s.lon === "number")
       .map((s) => [s.lat as number, s.lon as number] as [number, number]);
 
-    if (pts.length === 0) return null;
+    if (pts.length === 0) return;
     if (pts.length === 1) {
       map.setView(pts[0], 15);
-      return null;
+      return;
     }
-    return pts as unknown as LatLngBoundsExpression;
-  }, [stations, map]);
 
-  useEffect(() => {
-    if (!bounds) return;
+    const bounds = L.latLngBounds(pts);
     map.fitBounds(bounds, { padding: [40, 40] });
-  }, [bounds, map]);
+  }, [stations, map]);
 
   return null;
 }
@@ -117,17 +113,20 @@ function ClusteredMarkers({ stations }: { stations: Station[] }) {
   const map = useMap();
   const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
 
-  // Charger les scripts côté client uniquement
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
-      await import("leaflet-defaulticon-compatibility").catch(() => { });
-      await import("leaflet.markercluster"); // ajoute L.markerClusterGroup
+      // 1) Charger les libs + créer le groupe une seule fois
       if (!clusterRef.current) {
-        // Création du groupe de clusters avec un iconCreateFunction custom
+        await import("leaflet-defaulticon-compatibility").catch(() => {});
+        await import("leaflet.markercluster");
+
+        if (cancelled) return;
+
         clusterRef.current = L.markerClusterGroup({
           chunkedLoading: true,
           iconCreateFunction: (cluster) => {
-            // somme des vélos dans le cluster
             const total = cluster
               .getAllChildMarkers()
               .reduce(
@@ -139,46 +138,66 @@ function ClusteredMarkers({ stations }: { stations: Station[] }) {
               total === 0 ? "#ef4444" : total <= 10 ? "#f59e0b" : "#22c55e";
 
             return L.divIcon({
-              html: `<div class="vlille-cluster" style="--c:${color}"><span>${total}</span></div>`,
+              html: `<div class="vlille-cluster" style="--c:${color}">
+                       <span>${total}</span>
+                     </div>`,
               className: "vlille-cluster-wrapper",
               iconSize: [42, 42],
             });
           },
         });
+
         map.addLayer(clusterRef.current);
       }
+
+      if (cancelled) return;
+      const group = clusterRef.current;
+      if (!group) return;
+
+      // 2) Mettre à jour les markers à chaque changement de `stations`
+      group.clearLayers();
+
+      const markers: L.Marker[] = stations
+        .filter((s) => typeof s.lat === "number" && typeof s.lon === "number")
+        .map((s) => {
+          const m = L.marker([s.lat as number, s.lon as number], {
+            icon: iconFor(s.bikes),
+          }) as MarkerWithBikes;
+
+          m.options.bikes = s.bikes ?? 0;
+
+          m.bindPopup(
+            `<div style="min-width:200px">
+              <strong>${s.name ?? "Station"}</strong>
+              <div style="font-size:12px;opacity:.8">
+                ${s.address ?? "—"}
+              </div>
+              <div style="margin-top:6px">
+                🚲 ${s.bikes ?? 0} • 🅿️ ${s.docks ?? 0}
+              </div>
+            </div>`
+          );
+
+          return m;
+        });
+
+      group.addLayers(markers);
     })();
-  }, [map]);
 
-  // Met à jour les marqueurs quand la liste change
+    return () => {
+      cancelled = true;
+    };
+  }, [map, stations]);
+
+  // Optionnel : cleanup quand le composant est démonté
   useEffect(() => {
-    const group = clusterRef.current;
-    if (!group) return;
-
-    group.clearLayers();
-
-    const markers: L.Marker[] = stations
-      .filter((s) => typeof s.lat === "number" && typeof s.lon === "number")
-      .map((s) => {
-        // on stocke aussi bikes dans les options du marker (pour la somme du cluster)
-        const m = L.marker([s.lat as number, s.lon as number], {
-          icon: iconFor(s.bikes),
-        }) as MarkerWithBikes;
-        m.options.bikes = s.bikes ?? 0;
-
-        m.bindPopup(
-          `<div style="min-width:200px">
-            <strong>${s.name ?? "Station"}</strong>
-            <div style="font-size:12px;opacity:.8">${s.address ?? "—"}</div>
-            <div style="margin-top:6px">🚲 ${s.bikes ?? 0} • 🅿️ ${s.docks ?? 0
-          }</div>
-          </div>`
-        );
-        return m;
-      });
-
-    group.addLayers(markers);
-  }, [stations]);
+    return () => {
+      if (clusterRef.current) {
+        map.removeLayer(clusterRef.current);
+        clusterRef.current = null;
+      }
+    };
+  }, [map]);
 
   return null;
 }
@@ -194,30 +213,26 @@ export default function StationsMap({
 }) {
   const center: [number, number] = [50.6292, 3.0573]; // Lille
 
-  const [mapReady, setMapReady] = useState(false);
-
-
   return (
-    <div className={`card relative overflow-hidden ${className}`} style={{ height }}>
+    <div
+      className={`card relative overflow-hidden ${className}`}
+      style={{ height }}
+    >
       <MapContainer
         center={center}
         zoom={13}
         style={{ height: "100%", width: "100%" }}
         scrollWheelZoom
-        whenReady={() => setMapReady(true)}   // whenReady, pas whenCreated
-        key="leaflet-map"                  //  force remount propre en dev
       >
-        {mapReady && (
-          <>
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution="&copy; OpenStreetMap contributors"
-            />
-            <FitToStations stations={stations} />
-            <LocateControl />
-            <ClusteredMarkers stations={stations} />
-          </>
-        )}
+        <>
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution="&copy; OpenStreetMap contributors"
+          />
+          <FitToStations stations={stations} />
+          <LocateControl />
+          <ClusteredMarkers stations={stations} />
+        </>
       </MapContainer>
     </div>
   );
