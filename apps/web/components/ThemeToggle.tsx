@@ -36,7 +36,7 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
             aria-checked={checked}
             onClick={toggle}
             className={[
-                "group relative inline-flex h-8 w-14 items-center rounded-full transition-colors",
+                "group relative inline-flex h-8 w-14 items-center rounded-full transition-colors cursor-pointer",
                 "border",
                 checked
                     ? "bg-slate-900 border-slate-700"

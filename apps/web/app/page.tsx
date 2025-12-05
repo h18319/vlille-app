@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { Station } from "@/components/StationsMap";
 import ThemeToggle from "@/components/ThemeToggle";
 import LanguageToggle from "@/components/LanguageToogle";
+import { motion, AnimatePresence } from "framer-motion";
+import type { MotionProps, Variants } from "framer-motion";
 
 const StationsMap = dynamic(() => import("@/components/StationsMap"), {
   ssr: false,
@@ -31,6 +33,47 @@ function formatDate(d: Date) {
     month: "short",
   });
 }
+
+/* ---------------- Motion presets ---------------- */
+
+const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+const pageVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      duration: 0.25,
+      when: "beforeChildren",
+      staggerChildren: 0.08,
+    },
+  },
+};
+
+const sectionVariants: Variants = {
+  hidden: { opacity: 0, y: 10, filter: "blur(2px)" },
+  show: {
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+    transition: { duration: 0.28, ease: EASE_OUT },
+  },
+};
+
+const cardVariants: Variants = {
+  hidden: { opacity: 0, y: 8 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.22, ease: EASE_OUT },
+  },
+};
+
+const statHover: MotionProps = {
+  whileHover: { y: -4, scale: 1.01 },
+  whileTap: { scale: 0.99 },
+  transition: { type: "spring", stiffness: 300, damping: 22 },
+};
 
 export default function Page() {
   const [stations, setStations] = useState<Station[]>([]);
@@ -93,33 +136,64 @@ export default function Page() {
   }, [stations]);
 
   return (
-    <main className="page-shell space-y-8">
+    <motion.main
+      className="page-shell space-y-8"
+      variants={pageVariants}
+      initial="hidden"
+      animate="show"
+    >
       {/* HERO */}
-      <section className="space-y-3">
-        <div className="chip text-xs">
+      <motion.section className="space-y-3" variants={sectionVariants}>
+        <motion.div
+          className="chip text-xs"
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+        >
           <span>🟢 Prototype</span>
           <span aria-hidden>•</span>
           <span>Données temps réel</span>
-        </div>
+        </motion.div>
 
         <div className="flex flex-wrap items-center gap-3 justify-between">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+          <motion.h1
+            className="text-3xl md:text-4xl font-bold tracking-tight"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: "easeOut" }}
+          >
             V’Lille — Disponibilités en temps réel
-          </h1>
-          <div className="flex items-center gap-2">
+          </motion.h1>
+
+          <motion.div
+            className="flex items-center gap-2"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.24, ease: "easeOut", delay: 0.05 }}
+          >
             <LanguageToggle />
             <ThemeToggle className="shrink-0" />
-          </div>
+          </motion.div>
         </div>
 
-        <p className="max-w-2xl text-slate-400">
+        <motion.p
+          className="max-w-2xl text-slate-400"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.25, delay: 0.06 }}
+        >
           Visualisez les stations V’Lille sur une carte et consultez en direct
           le nombre de vélos et d’emplacements disponibles. Filtrez par seuil
           minimal de vélos pour trouver rapidement une station utile.
-        </p>
+        </motion.p>
 
         {/* Controls */}
-        <div className="flex flex-wrap items-center gap-3 pt-1">
+        <motion.div
+          className="flex flex-wrap items-center gap-3 pt-1"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.22, ease: "easeOut", delay: 0.08 }}
+        >
           <label className="text-sm text-slate-400">
             Seuil minimum de vélos
           </label>
@@ -128,7 +202,7 @@ export default function Page() {
             min={0}
             value={min}
             onChange={(e) => setMin(Number(e.target.value) || 0)}
-            className="input" // ← remplace "card px-3 py-2 text-slate-100 outline-none"
+            className="input"
             placeholder="0"
             aria-label="Filtrer par nombre minimum de vélos disponibles"
           />
@@ -141,38 +215,67 @@ export default function Page() {
               </span>
             </span>
           )}
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
 
       {/* STATS */}
-      <section className="grid gap-3 md:grid-cols-3">
-        <div className="card p-4">
+      <motion.section
+        className="grid gap-3 md:grid-cols-3"
+        variants={sectionVariants}
+      >
+        <motion.div className="card p-4" variants={cardVariants} {...statHover}>
           <div className="text-xs text-slate-400">Stations affichées</div>
           <div className="text-2xl font-semibold">{stats.totalStations}</div>
-        </div>
-        <div className="card p-4">
+        </motion.div>
+
+        <motion.div className="card p-4" variants={cardVariants} {...statHover}>
           <div className="text-xs text-slate-400">
             Vélos disponibles (somme)
           </div>
           <div className="text-2xl font-semibold">{stats.totalBikes}</div>
-        </div>
-        <div className="card p-4">
+        </motion.div>
+
+        <motion.div className="card p-4" variants={cardVariants} {...statHover}>
           <div className="text-xs text-slate-400">Moyenne vélos / station</div>
           <div className="text-2xl font-semibold">{stats.avg}</div>
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
 
       {/* MAP */}
-      {error && (
-        <div className="card p-4 border-red-500/30 text-red-300">
-          Erreur de chargement : {error}
-        </div>
-      )}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            className="card p-4 border-red-500/30 text-red-300"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.2 }}
+          >
+            Erreur de chargement : {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <section aria-label="Carte des stations V’Lille">
-        <StationsMap stations={stations} height={560} />
+      <motion.section
+        aria-label="Carte des stations V’Lille"
+        variants={sectionVariants}
+      >
+        <motion.div
+          className="will-change-transform"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.25 }}
+        >
+          <StationsMap stations={stations} height={560} />
+        </motion.div>
+
         {/* Légende */}
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+        <motion.div
+          className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-400"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.22, delay: 0.05 }}
+        >
           <span className="inline-flex items-center gap-2">
             <span className="inline-block h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white/90 shadow-[0_0_0_3px_rgba(0,0,0,.25)]" />
             Disponibilité bonne (≥ 4)
@@ -185,15 +288,11 @@ export default function Page() {
             <span className="inline-block h-3 w-3 rounded-full bg-rose-500 ring-2 ring-white/90 shadow-[0_0_0_3px_rgba(0,0,0,.25)]" />
             Indisponible (0)
           </span>
-          <span className="inline-flex items-center gap-2">
-            {/* <span className="inline-block h-3 w-3 rounded-full bg-emerald-500/70 ring-2 ring-white/90 shadow-[0_0_0_3px_rgba(0,0,0,.25)]" />
-            Couleur du cluster = somme des vélos du groupe */}
-          </span>
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
 
       {/* ABOUT */}
-      <section className="card p-5 space-y-3">
+      <motion.section className="card p-5 space-y-3" variants={sectionVariants}>
         <h2 className="text-lg font-semibold">À propos du projet</h2>
         <p className="text-sm text-slate-400">
           Ce prototype pédagogique illustre une stack moderne&nbsp;: backend
@@ -219,19 +318,30 @@ export default function Page() {
           Astuce&nbsp;: utilisez le bouton <strong>📍 Me centrer</strong> sur la
           carte pour vous géolocaliser et recentrer la vue.
         </div>
-      </section>
+      </motion.section>
 
       {/* FOOTER */}
-      <footer className="py-6 text-xs text-slate-500">
+      <motion.footer
+        className="py-6 text-xs text-slate-500"
+        variants={sectionVariants}
+      >
         Prototype non officiel — pour démonstration technique.
-      </footer>
+      </motion.footer>
 
       {/* Loader fin / overlay léger si besoin */}
-      {loading && (
-        <div className="fixed inset-x-0 bottom-3 mx-auto w-fit rounded-full bg-slate-900/80 border border-slate-800 px-3 py-1 text-xs text-slate-300 shadow">
-          Actualisation des données…
-        </div>
-      )}
-    </main>
+      <AnimatePresence>
+        {loading && (
+          <motion.div
+            className="fixed inset-x-0 bottom-3 mx-auto w-fit rounded-full bg-slate-900/80 border border-slate-800 px-3 py-1 text-xs text-slate-300 shadow"
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
+            Actualisation des données…
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.main>
   );
 }

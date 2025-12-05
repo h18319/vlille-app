@@ -74,7 +74,7 @@ export default function LanguageToggle({
           "h-9 px-3",
 
           // Style "compact select"
-          "rounded-xl border",
+          "rounded-xl border cursor-pointer",
           "bg-white text-slate-900 border-slate-200",
           "dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700",
 
