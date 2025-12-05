@@ -8,7 +8,7 @@ import LanguageToggle from "@/components/LanguageToogle";
 
 const StationsMap = dynamic(() => import("@/components/StationsMap"), {
   ssr: false,
-  loading: () => <div className="card p-3">Chargement de la carte…</div>,
+  loading: () => <div className="card p-3">Loading the map…</div>,
 });
 
 // --- Data fetcher (proxy Next) ---
@@ -24,7 +24,9 @@ async function fetchStations(
 
 // --- Utils ---
 function formatDate(d: Date) {
-  return d.toLocaleString(undefined, {
+  // Tu peux laisser undefined si tu veux la langue auto du navigateur.
+  // Ici je force un format anglais lisible.
+  return d.toLocaleString("en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     day: "2-digit",
@@ -39,7 +41,7 @@ export default function Page() {
   const [min, setMin] = useState<number>(0);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  // Chargement initial + au changement de filtre
+  // Initial load + when filter changes
   useEffect(() => {
     const ac = new AbortController();
     let cancelled = false;
@@ -68,7 +70,7 @@ export default function Page() {
     };
   }, [min]);
 
-  // Rafraîchissement automatique toutes les 60s
+  // Auto refresh every 60s
   useEffect(() => {
     const id = setInterval(() => {
       const ac = new AbortController();
@@ -79,10 +81,11 @@ export default function Page() {
         })
         .catch(() => {});
     }, 60_000);
+
     return () => clearInterval(id);
   }, [min]);
 
-  // --- Stats dérivées ---
+  // --- Derived stats ---
   const stats = useMemo(() => {
     const totalStations = stations.length;
     const totalBikes = stations.reduce((acc, s) => acc + (s.bikes ?? 0), 0);
@@ -99,13 +102,14 @@ export default function Page() {
         <div className="chip text-xs">
           <span>🟢 Prototype</span>
           <span aria-hidden>•</span>
-          <span>Données temps réel</span>
+          <span>Real-time data</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 justify-between">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-            V’Lille — Disponibilités en temps réel
+            V’Lille — Live availability
           </h1>
+
           <div className="flex items-center gap-2">
             <LanguageToggle />
             <ThemeToggle className="shrink-0" />
@@ -113,29 +117,30 @@ export default function Page() {
         </div>
 
         <p className="max-w-2xl text-slate-400">
-          Visualisez les stations V’Lille sur une carte et consultez en direct
-          le nombre de vélos et d’emplacements disponibles. Filtrez par seuil
-          minimal de vélos pour trouver rapidement une station utile.
+          View V’Lille stations on a map and check in real time how many bikes
+          and docks are available. Filter by a minimum bike threshold to quickly
+          find a useful station.
         </p>
 
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-3 pt-1">
           <label className="text-sm text-slate-400">
-            Seuil minimum de vélos
+            Minimum bikes threshold
           </label>
+
           <input
             type="number"
             min={0}
             value={min}
             onChange={(e) => setMin(Number(e.target.value) || 0)}
-            className="input" // ← remplace "card px-3 py-2 text-slate-100 outline-none"
+            className="input"
             placeholder="0"
-            aria-label="Filtrer par nombre minimum de vélos disponibles"
+            aria-label="Filter by minimum number of available bikes"
           />
 
           {lastUpdate && (
             <span className="text-xs text-slate-400">
-              Dernière mise à jour :{" "}
+              Last update:{" "}
               <span className="text-slate-600 dark:text-slate-300">
                 {formatDate(lastUpdate)}
               </span>
@@ -147,17 +152,17 @@ export default function Page() {
       {/* STATS */}
       <section className="grid gap-3 md:grid-cols-3">
         <div className="card p-4">
-          <div className="text-xs text-slate-400">Stations affichées</div>
+          <div className="text-xs text-slate-400">Stations displayed</div>
           <div className="text-2xl font-semibold">{stats.totalStations}</div>
         </div>
+
         <div className="card p-4">
-          <div className="text-xs text-slate-400">
-            Vélos disponibles (somme)
-          </div>
+          <div className="text-xs text-slate-400">Available bikes (total)</div>
           <div className="text-2xl font-semibold">{stats.totalBikes}</div>
         </div>
+
         <div className="card p-4">
-          <div className="text-xs text-slate-400">Moyenne vélos / station</div>
+          <div className="text-xs text-slate-400">Average bikes / station</div>
           <div className="text-2xl font-semibold">{stats.avg}</div>
         </div>
       </section>
@@ -165,73 +170,79 @@ export default function Page() {
       {/* MAP */}
       {error && (
         <div className="card p-4 border-red-500/30 text-red-300">
-          Erreur de chargement : {error}
+          Loading error: {error}
         </div>
       )}
 
-      <section aria-label="Carte des stations V’Lille">
+      <section aria-label="V’Lille stations map">
         <StationsMap stations={stations} height={560} />
-        {/* Légende */}
+
+        {/* Legend */}
         <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-400">
           <span className="inline-flex items-center gap-2">
             <span className="inline-block h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-white/90 shadow-[0_0_0_3px_rgba(0,0,0,.25)]" />
-            Disponibilité bonne (≥ 4)
+            Good availability (≥ 4)
           </span>
+
           <span className="inline-flex items-center gap-2">
             <span className="inline-block h-3 w-3 rounded-full bg-amber-500 ring-2 ring-white/90 shadow-[0_0_0_3px_rgba(0,0,0,.25)]" />
-            Faible (1–3)
+            Low (1–3)
           </span>
+
           <span className="inline-flex items-center gap-2">
             <span className="inline-block h-3 w-3 rounded-full bg-rose-500 ring-2 ring-white/90 shadow-[0_0_0_3px_rgba(0,0,0,.25)]" />
-            Indisponible (0)
+            Empty (0)
           </span>
+
           <span className="inline-flex items-center gap-2">
-            {/* <span className="inline-block h-3 w-3 rounded-full bg-emerald-500/70 ring-2 ring-white/90 shadow-[0_0_0_3px_rgba(0,0,0,.25)]" />
-            Couleur du cluster = somme des vélos du groupe */}
+            {/* 
+              Cluster color = total bikes in the group 
+            */}
           </span>
         </div>
       </section>
 
       {/* ABOUT */}
       <section className="card p-5 space-y-3">
-        <h2 className="text-lg font-semibold">À propos du projet</h2>
+        <h2 className="text-lg font-semibold">About this project</h2>
+
         <p className="text-sm text-slate-400">
-          Ce prototype pédagogique illustre une stack moderne&nbsp;: backend
-          Node/Express (cache 60s), proxy API via Next.js, front React avec App
-          Router, Tailwind v4, et carte Leaflet (icônes colorées, clustering,
-          géolocalisation).
+          This educational prototype showcases a modern stack: Node/Express
+          backend (60s cache), API proxy via Next.js, React front-end with the
+          App Router, Tailwind v4, and a Leaflet map (colored icons, clustering,
+          geolocation).
         </p>
+
         <ul className="text-sm text-slate-400 list-disc pl-5 space-y-1">
           <li>
-            Les données proviennent de l’Open Data (format GBFS) exposé par
-            l’opérateur, et sont agrégées côté serveur pour la carte.
+            Data comes from the operator’s Open Data feed (GBFS format) and is
+            aggregated server-side for the map.
           </li>
           <li>
-            Le champ <code>min</code> filtre côté serveur les stations selon le
-            nombre de vélos disponibles.
+            The <code>min</code> parameter filters stations server-side based on
+            available bikes.
           </li>
-          <li>
-            Le rafraîchissement est automatique chaque minute (et peut être
-            ajusté).
-          </li>
+          <li>Auto-refresh runs every minute (and can be adjusted).</li>
         </ul>
+
         <div className="text-xs text-slate-500">
-          Astuce&nbsp;: utilisez le bouton <strong>📍 Me centrer</strong> sur la
-          carte pour vous géolocaliser et recentrer la vue.
+          Tip: use the <strong>📍 Center me</strong> button on the map to
+          geolocate yourself and recenter the view.
         </div>
       </section>
 
       {/* FOOTER */}
       <footer className="py-6 text-xs text-slate-500">
-        Prototype non officiel — pour démonstration technique.
+        Unofficial prototype — for technical demonstration.
       </footer>
 
-      {/* Loader fin / overlay léger si besoin */}
+      {/* Bottom loader */}
       {loading && (
         <div className="fixed inset-x-0 bottom-3 mx-auto w-fit rounded-full bg-slate-900/80 border border-slate-800 px-3 py-1 text-xs text-slate-300 shadow">
-          Actualisation des données…
+          Updating data…
         </div>
       )}
     </main>
   );
 }
+
